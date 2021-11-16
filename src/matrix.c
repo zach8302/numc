@@ -45,7 +45,7 @@ void rand_matrix(matrix *result, unsigned int seed, double low, double high) {
 
 /*
  * Returns the double value of the matrix at the given row and column.
- * You may assume `row` and `col` are valid. Note that the matrix is in ROW MAJOR ORDER.
+ * You may assume `row` and `col` are valid. Note that the matrix is in row-major order.
  */
 double get(matrix *mat, int row, int col) {
     // Task 1.1 TODO
@@ -53,7 +53,7 @@ double get(matrix *mat, int row, int col) {
 
 /*
  * Sets the value at the given row and column to val. You may assume `row` and
- * `col` are valid. Note that the matrix is in ROW MAJOR ORDER.
+ * `col` are valid. Note that the matrix is in row-major order.
  */
 void set(matrix *mat, int row, int col, double val) {
     // Task 1.1 TODO
@@ -120,7 +120,7 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int co
 }
 
 /*
- * Sets all entries in mat to val. Note that the matrix is in ROW MAJOR ORDER.
+ * Sets all entries in mat to val. Note that the matrix is in row-major order.
  */
 void fill_matrix(matrix *mat, double val) {
     // Task 1.5 TODO
@@ -129,7 +129,7 @@ void fill_matrix(matrix *mat, double val) {
 /*
  * Store the result of taking the absolute value element-wise to `result`.
  * Return 0 upon success.
- * Note that the matrix is in ROW MAJOR ORDER.
+ * Note that the matrix is in row-major order.
  */
 int abs_matrix(matrix *result, matrix *mat) {
     // Task 1.5 TODO
@@ -147,9 +147,9 @@ int neg_matrix(matrix *result, matrix *mat) {
 
 /*
  * Store the result of adding mat1 and mat2 to `result`.
- * Return 0 upon success and a nonzero value upon failure.
+ * Return 0 upon success.
  * You may assume `mat1` and `mat2` have the same dimensions.
- * Note that the matrix is in ROW MAJOR ORDER.
+ * Note that the matrix is in row-major order.
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // Task 1.5 TODO
@@ -158,9 +158,9 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 /*
  * (OPTIONAL)
  * Store the result of subtracting mat2 from mat1 to `result`.
- * Return 0 upon success and a nonzero value upon failure.
+ * Return 0 upon success.
  * You may assume `mat1` and `mat2` have the same dimensions.
- * Note that the matrix is in ROW MAJOR ORDER.
+ * Note that the matrix is in row-major order.
  */
 int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // Task 1.5 TODO
@@ -168,10 +168,10 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
 /*
  * Store the result of multiplying mat1 and mat2 to `result`.
- * Return 0 upon success and a nonzero value upon failure.
+ * Return 0 upon success.
  * Remember that matrix multiplication is not the same as multiplying individual elements.
  * You may assume `mat1`'s number of columns is equal to `mat2`'s number of rows.
- * Note that the matrix is in ROW MAJOR ORDER.
+ * Note that the matrix is in row-major order.
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     // Task 1.6 TODO
@@ -179,10 +179,10 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 
 /*
  * Store the result of raising mat to the (pow)th power to `result`.
- * Return 0 upon success and a nonzero value upon failure.
+ * Return 0 upon success.
  * Remember that pow is defined with matrix multiplication, not element-wise multiplication.
  * You may assume `mat` is a square matrix and `pow` is a non-negative integer.
- * Note that the matrix is in ROW MAJOR ORDER.
+ * Note that the matrix is in row-major order.
  */
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     // Task 1.6 TODO
