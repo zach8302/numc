@@ -169,8 +169,13 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int co
  * Sets all entries in mat to val. Note that the matrix is in row-major order.
  */
 void fill_matrix(matrix *mat, double val) {
+    __m256d vals = _mm256_set1_pd (val);
     int size = mat->rows * mat->cols;
-    for(int i = 0; i < size; i += 1) {
+    int blocks = size / 4;
+    for(int i = 0; i < blocks; i += 1) {
+        _mm256_storeu_pd ((i * 4) + mat->data, vals);
+    }
+    for(int i = blocks * 4; i < size; i += 1) {
         mat->data[i] = val;
     }
 }
@@ -211,8 +216,19 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Note that the matrix is in row-major order.
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
+    __m256d vec1;
+    __m256d vec2;
+    __m256d sum_vec;
     int size = mat1->rows * mat1->cols;
-    for(int i = 0; i < size; i += 1) {
+    int blocks = size / 4;
+    for(int i = 0; i < blocks; i += 1) {
+        int curr = 4 * i;
+        vec1 = _mm256_loadu_pd(mat1->data + curr);
+        vec2 = _mm256_loadu_pd(mat2->data + curr);
+        sum_vec = _mm256_add_pd(vec1, vec2);
+        _mm256_storeu_pd (result->data + curr, sum_vec);
+    }
+    for(int i = blocks * 4; i < size; i += 1) {
         result->data[i] = mat1->data[i] + mat2->data[i];
     }
     return 0;
