@@ -171,26 +171,14 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int co
 void fill_matrix(matrix *mat, double val) {
     __m256d vals = _mm256_set1_pd (val);
     int size = mat->rows * mat->cols;
-    int threads = omp_get_num_threads();
     int blocks = size / 4;
-    int split = blocks / threads;
-    #pragma omp parallel 
-    {
-        int thread = omp_get_thread_num();
-        int start = thread * split;
-        int end;
-        if (thread == threads - 1){
-            end = size;
-        } else {
-            end = (start + split) * 4;
-        }
-        for(int i = start; i < start + split; i += 1) {
-            _mm256_storeu_pd ((i * 4) + mat->data, vals);
-        }
-        for(int i = (start + split) * 4; i < end; i += 1) {
-            mat->data[i] = val;
-        }
+    #pragma omp parallel for
+    for(int i = 0; i < blocks; i += 1) {
+        _mm256_storeu_pd ((i * 4) + mat->data, vals);
     }
+    for(int i = blocks * 4; i < size; i += 1) {
+        mat->data[i] = val;
+    }   
 }
 
 /*
@@ -204,6 +192,7 @@ int abs_matrix(matrix *result, matrix *mat) {
     __m256d neg;
     int size = mat->rows * mat->cols;
     int blocks = size / 4;
+    #pragma omp parallel for
     for(int i = 0; i < blocks; i += 1) {
         int curr = 4 * i;
         vec = _mm256_loadu_pd(mat->data + curr);
@@ -244,6 +233,7 @@ int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     __m256d sum_vec;
     int size = mat1->rows * mat1->cols;
     int blocks = size / 4;
+    #pragma omp parallel for
     for(int i = 0; i < blocks; i += 1) {
         int curr = 4 * i;
         vec1 = _mm256_loadu_pd(mat1->data + curr);
@@ -276,19 +266,21 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Note that the matrix is in row-major order.
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    int sum;
+    // printf("%d", result->rows);
+    // printf("%d", result->cols);
+    double sum;
     int rows1 = mat1->rows;
     int cols1 = mat1->cols;
     int cols2 = mat2->cols;
-    for (int i = 0; i < rows1; i += 1) {
-        for (int j = 0; j < cols2; j += 1) {
+    for (int row1 = 0; row1 < rows1; row1 += 1) {
+        for (int col2 = 0; col2 < cols2; col2 += 1) {
             sum = 0;
-            for (int k = 0; k < cols1; k += 1) {
-                int index1 = (cols1 * i) + k;
-                int index2 = (cols2 * k) + j;
-                sum += mat1->data[index1] * mat2->data[index2];
+            for (int offset = 0; offset < cols1; offset += 1) {
+                int index1 = (cols1 * row1) + offset;
+                int index2 = (cols2 * offset) + col2;
+                sum += (mat1->data[index1] * mat2->data[index2]);
             }
-            int index = (rows1 * i) + j;
+            int index = (cols2 * row1) + col2;
             result->data[index] = sum;
         }
     }
