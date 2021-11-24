@@ -266,24 +266,45 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Note that the matrix is in row-major order.
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    // printf("%d", result->rows);
-    // printf("%d", result->cols);
     double sum;
+    double sum2;
+    __m256d sum_vec;
     int rows1 = mat1->rows;
     int cols1 = mat1->cols;
     int cols2 = mat2->cols;
-    for (int row1 = 0; row1 < rows1; row1 += 1) {
-        for (int col2 = 0; col2 < cols2; col2 += 1) {
+    int blocks = cols1 / 4;
+    double *access = malloc(sizeof(double) * 4);
+    for (int j = 0; j < cols2; j += 1) {
+        for (int i = 0; i < rows1; i += 1) {
             sum = 0;
-            for (int offset = 0; offset < cols1; offset += 1) {
-                int index1 = (cols1 * row1) + offset;
-                int index2 = (cols2 * offset) + col2;
+            #pragma omp parallel
+            {
+                __m256d vec1;
+                __m256d vec2;
+                __m256d temp = _mm256_set1_pd(0);
+                #pragma omp for
+                for (int k = 0; k < blocks; k += 1) {
+                    int index1 = (cols1 * i) + (k * 4);
+                    int index2 = (cols2 * (k * 4)) + j;
+                    vec1 = _mm256_loadu_pd(mat1->data + index1);
+                    vec2 = _mm256_set_pd(mat2->data[index2 + 3 * cols2], mat2->data[index2 + 2 * cols2], mat2->data[index2 + cols2], mat2->data[index2]);
+                    temp = _mm256_add_pd(temp, _mm256_mul_pd(vec1, vec2));
+                }
+                #pragma omp critical
+                sum_vec = _mm256_add_pd(sum_vec, temp);
+            }
+            _mm256_storeu_pd(access, sum_vec);
+            sum += access[0] + access[1] + access[2] + access[3];
+            for (int k = blocks * 4; k < cols1; k += 1) {
+                int index1 = (cols1 * i) + k;
+                int index2 = (cols2 * k) + j;
                 sum += (mat1->data[index1] * mat2->data[index2]);
             }
-            int index = (cols2 * row1) + col2;
+            int index = (cols2 * i) + j;
             result->data[index] = sum;
         }
     }
+    free(access);
     return 0;
 }
 
