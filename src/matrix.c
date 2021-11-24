@@ -171,12 +171,25 @@ int allocate_matrix_ref(matrix **mat, matrix *from, int offset, int rows, int co
 void fill_matrix(matrix *mat, double val) {
     __m256d vals = _mm256_set1_pd (val);
     int size = mat->rows * mat->cols;
+    int threads = omp_get_num_threads();
     int blocks = size / 4;
-    for(int i = 0; i < blocks; i += 1) {
-        _mm256_storeu_pd ((i * 4) + mat->data, vals);
-    }
-    for(int i = blocks * 4; i < size; i += 1) {
-        mat->data[i] = val;
+    int split = blocks / threads;
+    #pragma omp parallel 
+    {
+        int thread = omp_get_thread_num();
+        int start = thread * split;
+        int end;
+        if (thread == threads - 1){
+            end = size;
+        } else {
+            end = (start + split) * 4;
+        }
+        for(int i = start; i < start + split; i += 1) {
+            _mm256_storeu_pd ((i * 4) + mat->data, vals);
+        }
+        for(int i = (start + split) * 4; i < end; i += 1) {
+            mat->data[i] = val;
+        }
     }
 }
 
@@ -186,15 +199,25 @@ void fill_matrix(matrix *mat, double val) {
  * Note that the matrix is in row-major order.
  */
 int abs_matrix(matrix *result, matrix *mat) {
+    __m256d mul = _mm256_set1_pd(-1);
+    __m256d vec;
+    __m256d neg;
     int size = mat->rows * mat->cols;
-    for(int i = 0; i < size; i += 1) {
+    int blocks = size / 4;
+    for(int i = 0; i < blocks; i += 1) {
+        int curr = 4 * i;
+        vec = _mm256_loadu_pd(mat->data + curr);
+        neg = _mm256_mul_pd(mul, vec);
+        vec = _mm256_max_pd(vec, neg);
+        _mm256_storeu_pd(result->data + curr, vec);
+    }
+    for(int i = blocks * 4; i < size; i += 1) {
         int val = mat->data[i];
         if (val >= 0) {
             result->data[i] = val;
         } else {
             result->data[i] = 0 - val;
         }
-        
     }
     return 0;
 }
