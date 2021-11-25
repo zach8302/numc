@@ -269,42 +269,49 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     double sum;
     int rows1 = mat1->rows;
     int cols1 = mat1->cols;
+    int rows2 = mat2->rows;
     int cols2 = mat2->cols;
-    int blocks = rows1 / 4;
+    matrix *transpose;
+    allocate_matrix(&transpose, cols2, rows2);
+    transpose_matrix(transpose, mat2);
+    int blocks = cols1 / 4;
     #pragma omp parallel for
-    for (int i = 0; i < blocks; i += 1) {
-        __m256d sum_vec;
-        __m256d vec1;
-        __m256d vec2;
-        double *access = malloc(sizeof(double) * 4);
-        for (int j = 0; j < cols2; j += 1) {
-            sum_vec = _mm256_set1_pd(0);
-            for (int k = 0; k < cols1; k += 1) {
-                int index1 = (cols1 * (i * 4)) + k;
-                int index2 = (cols2 * k) + j;
-                vec1 = _mm256_set_pd(mat1->data[index1], mat1->data[index1 + cols1], mat1->data[index1 + 2 * cols1], mat1->data[index1 + 3 * cols1]);
-                vec2 = _mm256_set1_pd(mat2->data[index2]);
-                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
-            }    
-            _mm256_storeu_pd(access, sum_vec);
-            int index = (cols2 * (i * 4)) + j;
-            result->data[index] = access[3];
-            result->data[index + cols2] = access[2];
-            result->data[index + 2 * cols2] = access[1];
-            result->data[index + 3 * cols2] = access[0];   
-        }
-        free(access);
-    }
-    for (int i = blocks * 4; i < rows1; i += 1) {
+    for (int i = 0; i < rows1; i += 1) {
         for (int j = 0; j < cols2; j += 1) {
             sum = 0;
-            for (int k = 0; k < cols1; k += 1) {
+            __m256d vec1;
+            __m256d vec2;
+            __m256d sum_vec = _mm256_set1_pd(0);
+            double *access = malloc(4 * sizeof(double));
+            for (int k = 0; k < blocks; k += 1) {
+                int index1 = (cols1 * i) + (k * 4);
+                int index2 = (cols1 * j) + (k * 4);
+                vec1 = _mm256_loadu_pd(mat1->data + index1);
+                vec2 = _mm256_loadu_pd(transpose->data + index2);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+            }
+            _mm256_storeu_pd(access, sum_vec);
+            sum += access[0] + access[1] + access[2] + access[3];
+            for (int k = blocks * 4; k < cols1; k += 1) {
                 int index1 = (cols1 * i) + k;
-                int index2 = (cols2 * k) + j;
-                sum += mat1->data[index1] * mat2->data[index2];
+                int index2 = (cols1 * j) + k;
+                sum += mat1->data[index1] * transpose->data[index2];
             }
             int index = (cols2 * i) + j;
             result->data[index] = sum;
+            free(access);
+        }
+    }
+    deallocate_matrix(transpose);
+    return 0;
+}
+
+int transpose_matrix(matrix *result, matrix *mat) {
+    int rows = mat->rows;
+    int cols = mat->cols;
+    for (int i = 0; i < rows; i += 1) {
+        for (int j = 0; j < cols; j += 1) {
+            result->data[rows * j + i] = mat->data[cols * i + j];
         }
     }
     return 0;
