@@ -324,16 +324,27 @@ int transpose_matrix(matrix *result, matrix *mat) {
  * You may assume `mat` is a square matrix and `pow` is a non-negative integer.
  * Note that the matrix is in row-major order.
  */
+//Euler's
 int pow_matrix(matrix *result, matrix *mat, int pow) {
     matrix *temp;
+    matrix *res;
     allocate_matrix(&temp, mat->rows, mat->cols);
+    allocate_matrix(&res, mat->rows, mat->cols);
     fill_matrix(result, 0);
+    copy_matrix(temp, mat);
     for (int i = 0; i < result->rows; i += 1) {
         set(result, i, i, 1);
     }
-    for (int i = 0; i < pow; i += 1) {
-        copy_matrix(temp, result);
-        mul_matrix(result, temp, mat);
+    while(pow > 0) {
+        if (pow % 2 == 0) {
+            mul_matrix(res, temp, temp);
+            pow /= 2;
+            copy_matrix(temp, res);
+        } else {
+            mul_matrix(res, result, temp);
+            pow -= 1;
+            copy_matrix(result, res);
+        }
     }
     return 0;
 }
