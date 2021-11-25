@@ -275,15 +275,38 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     allocate_matrix(&transpose, cols2, rows2);
     transpose_matrix(transpose, mat2);
     int blocks = cols1 / 4;
+    int big_blocks = cols1 / 16;
     #pragma omp parallel for
     for (int i = 0; i < rows1; i += 1) {
+        __m256d vec1;
+        __m256d vec2;
+        __m256d vec3;
+        __m256d vec4;
+        __m256d vec5;
+        __m256d vec6;
+        __m256d vec7;
+        __m256d vec8;
         for (int j = 0; j < cols2; j += 1) {
             sum = 0;
-            __m256d vec1;
-            __m256d vec2;
             __m256d sum_vec = _mm256_set1_pd(0);
             double *access = malloc(4 * sizeof(double));
-            for (int k = 0; k < blocks; k += 1) {
+            for (int k = 0; k < big_blocks; k += 1) {
+                int index1 = (cols1 * i) + (k * 16);
+                int index2 = (cols1 * j) + (k * 16);
+                vec1 = _mm256_loadu_pd(mat1->data + index1);
+                vec2 = _mm256_loadu_pd(transpose->data + index2);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+                vec3 = _mm256_loadu_pd(mat1->data + index1 + 4);
+                vec4 = _mm256_loadu_pd(transpose->data + index2 + 4);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec3, vec4));
+                vec5 = _mm256_loadu_pd(mat1->data + index1 + 8);
+                vec6 = _mm256_loadu_pd(transpose->data + index2 + 8);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec5, vec6));
+                vec7 = _mm256_loadu_pd(mat1->data + index1 + 12);
+                vec8 = _mm256_loadu_pd(transpose->data + index2 + 12);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec7, vec8));
+            }
+            for (int k = big_blocks * 4; k < blocks; k += 1) {
                 int index1 = (cols1 * i) + (k * 4);
                 int index2 = (cols1 * j) + (k * 4);
                 vec1 = _mm256_loadu_pd(mat1->data + index1);
