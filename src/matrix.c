@@ -266,7 +266,6 @@ int sub_matrix(matrix *result, matrix *mat1, matrix *mat2) {
  * Note that the matrix is in row-major order.
  */
 int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    double sum;
     int rows1 = mat1->rows;
     int cols1 = mat1->cols;
     int rows2 = mat2->rows;
@@ -278,16 +277,10 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
     int big_blocks = cols1 / 16;
     #pragma omp parallel for
     for (int i = 0; i < rows1; i += 1) {
-        __m256d vec1;
-        __m256d vec2;
-        __m256d vec3;
-        __m256d vec4;
-        __m256d vec5;
-        __m256d vec6;
-        __m256d vec7;
-        __m256d vec8;
         for (int j = 0; j < cols2; j += 1) {
-            sum = 0;
+            __m256d vec1;
+            __m256d vec2;
+            double sum = 0;
             __m256d sum_vec = _mm256_set1_pd(0);
             double *access = malloc(4 * sizeof(double));
             for (int k = 0; k < big_blocks; k += 1) {
@@ -296,15 +289,15 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
                 vec1 = _mm256_loadu_pd(mat1->data + index1);
                 vec2 = _mm256_loadu_pd(transpose->data + index2);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
-                vec3 = _mm256_loadu_pd(mat1->data + index1 + 4);
-                vec4 = _mm256_loadu_pd(transpose->data + index2 + 4);
-                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec3, vec4));
-                vec5 = _mm256_loadu_pd(mat1->data + index1 + 8);
-                vec6 = _mm256_loadu_pd(transpose->data + index2 + 8);
-                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec5, vec6));
-                vec7 = _mm256_loadu_pd(mat1->data + index1 + 12);
-                vec8 = _mm256_loadu_pd(transpose->data + index2 + 12);
-                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec7, vec8));
+                vec1 = _mm256_loadu_pd(mat1->data + index1 + 4);
+                vec2 = _mm256_loadu_pd(transpose->data + index2 + 4);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+                vec1 = _mm256_loadu_pd(mat1->data + index1 + 8);
+                vec2 = _mm256_loadu_pd(transpose->data + index2 + 8);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+                vec1 = _mm256_loadu_pd(mat1->data + index1 + 12);
+                vec2 = _mm256_loadu_pd(transpose->data + index2 + 12);
+                sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
             }
             for (int k = big_blocks * 4; k < blocks; k += 1) {
                 int index1 = (cols1 * i) + (k * 4);
@@ -332,6 +325,7 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
 int transpose_matrix(matrix *result, matrix *mat) {
     int rows = mat->rows;
     int cols = mat->cols;
+    #pragma omp parallel for
     for (int i = 0; i < rows; i += 1) {
         for (int j = 0; j < cols; j += 1) {
             result->data[rows * j + i] = mat->data[cols * i + j];
@@ -375,8 +369,14 @@ int pow_matrix(matrix *result, matrix *mat, int pow) {
 void copy_matrix(matrix *result, matrix *mat) {
     int rows = mat->rows;
     int cols = mat->cols;
+    int blocks = cols / 4;
+    #pragma omp parallel for
     for (int i = 0; i < rows; i += 1) {
-        for (int j = 0; j < cols; j += 1) {
+        for (int j = 0; j < blocks; j += 1) {
+            __m256d temp = _mm256_loadu_pd(mat->data + i * cols + j * 4);
+            _mm256_storeu_pd(result->data + i * cols + j * 4, temp);
+        }
+        for (int j = blocks * 4; j < cols; j += 1) {
             set(result, i, j, get(mat, i, j));
         }
     }
