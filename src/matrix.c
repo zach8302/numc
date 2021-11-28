@@ -172,9 +172,11 @@ void fill_matrix(matrix *mat, double val) {
     __m256d vals = _mm256_set1_pd (val);
     int size = mat->rows * mat->cols;
     int blocks = size / 4;
+    double *index = mat->data;
     #pragma omp parallel for
     for(int i = 0; i < blocks; i += 1) {
-        _mm256_storeu_pd ((i * 4) + mat->data, vals);
+        _mm256_storeu_pd (index, vals);
+        index += 4;
     }
     for(int i = blocks * 4; i < size; i += 1) {
         mat->data[i] = val;
@@ -188,24 +190,29 @@ void fill_matrix(matrix *mat, double val) {
  */
 int abs_matrix(matrix *result, matrix *mat) {
     __m256d mul = _mm256_set1_pd(-1);
-    __m256d vec;
-    __m256d neg;
     int size = mat->rows * mat->cols;
     int blocks = size / 4;
-    #pragma omp parallel for
-    for(int i = 0; i < blocks; i += 1) {
-        int curr = 4 * i;
-        vec = _mm256_loadu_pd(mat->data + curr);
-        neg = _mm256_mul_pd(mul, vec);
-        vec = _mm256_max_pd(vec, neg);
-        _mm256_storeu_pd(result->data + curr, vec);
-    }
-    for(int i = blocks * 4; i < size; i += 1) {
-        int val = mat->data[i];
-        if (val >= 0) {
-            result->data[i] = val;
-        } else {
-            result->data[i] = 0 - val;
+    double *index = mat->data;
+    double *index2 = result->data;
+    #pragma omp parallel
+    {
+        __m256d vec;
+        __m256d neg;
+        #pragma omp for
+        for(int i = 0; i < blocks; i += 1) {
+            int curr = 4 * i;
+            vec = _mm256_loadu_pd(index + curr);
+            neg = _mm256_mul_pd(mul, vec);
+            vec = _mm256_max_pd(vec, neg);
+            _mm256_storeu_pd(index2 + curr, vec);
+        }
+        for(int i = blocks * 4; i < size; i += 1) {
+            int val = mat->data[i];
+            if (val >= 0) {
+                result->data[i] = val;
+            } else {
+                result->data[i] = 0 - val;
+            }
         }
     }
     return 0;
@@ -228,22 +235,29 @@ int neg_matrix(matrix *result, matrix *mat) {
  * Note that the matrix is in row-major order.
  */
 int add_matrix(matrix *result, matrix *mat1, matrix *mat2) {
-    __m256d vec1;
-    __m256d vec2;
-    __m256d sum_vec;
     int size = mat1->rows * mat1->cols;
     int blocks = size / 4;
-    #pragma omp parallel for
-    for(int i = 0; i < blocks; i += 1) {
-        int curr = 4 * i;
-        vec1 = _mm256_loadu_pd(mat1->data + curr);
-        vec2 = _mm256_loadu_pd(mat2->data + curr);
-        sum_vec = _mm256_add_pd(vec1, vec2);
-        _mm256_storeu_pd (result->data + curr, sum_vec);
+    double *index1 = mat1->data;
+    double *index2= mat2->data;
+    double *index3 = result->data;
+    #pragma omp parallel
+    {
+        __m256d vec1;
+        __m256d vec2;
+        __m256d sum_vec;
+        #pragma omp for
+        for(int i = 0; i < blocks; i += 1) {
+            int curr = i * 4;
+            vec1 = _mm256_loadu_pd(index1 + curr);
+            vec2 = _mm256_loadu_pd(index2 + curr);
+            sum_vec = _mm256_add_pd(vec1, vec2);
+            _mm256_storeu_pd (index3 + curr, sum_vec);
+        }
+        for(int i = blocks * 4; i < size; i += 1) {
+            result->data[i] = mat1->data[i] + mat2->data[i];
+        }
     }
-    for(int i = blocks * 4; i < size; i += 1) {
-        result->data[i] = mat1->data[i] + mat2->data[i];
-    }
+
     return 0;
 }
 
