@@ -282,29 +282,31 @@ int mul_matrix(matrix *result, matrix *mat1, matrix *mat2) {
             __m256d vec2;
             double sum = 0;
             __m256d sum_vec = _mm256_set1_pd(0);
+            double *index1 = (mat1->data) + cols1 * i;
+            double *index2 = (transpose->data) + (cols1 * j);
             double *access = malloc(4 * sizeof(double));
             for (int k = 0; k < big_blocks; k += 1) {
-                int index1 = (cols1 * i) + (k * 16);
-                int index2 = (cols1 * j) + (k * 16);
-                vec1 = _mm256_loadu_pd(mat1->data + index1);
-                vec2 = _mm256_loadu_pd(transpose->data + index2);
+                vec1 = _mm256_loadu_pd(index1);
+                vec2 = _mm256_loadu_pd(index2);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
-                vec1 = _mm256_loadu_pd(mat1->data + index1 + 4);
-                vec2 = _mm256_loadu_pd(transpose->data + index2 + 4);
+                vec1 = _mm256_loadu_pd(index1 + 4);
+                vec2 = _mm256_loadu_pd(index2 + 4);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
-                vec1 = _mm256_loadu_pd(mat1->data + index1 + 8);
-                vec2 = _mm256_loadu_pd(transpose->data + index2 + 8);
+                vec1 = _mm256_loadu_pd(index1 + 8);
+                vec2 = _mm256_loadu_pd(index2 + 8);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
-                vec1 = _mm256_loadu_pd(mat1->data + index1 + 12);
-                vec2 = _mm256_loadu_pd(transpose->data + index2 + 12);
+                vec1 = _mm256_loadu_pd(index1 + 12);
+                vec2 = _mm256_loadu_pd(index2 + 12);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+                index1 += 16;
+                index2 += 16;
             }
             for (int k = big_blocks * 4; k < blocks; k += 1) {
-                int index1 = (cols1 * i) + (k * 4);
-                int index2 = (cols1 * j) + (k * 4);
-                vec1 = _mm256_loadu_pd(mat1->data + index1);
-                vec2 = _mm256_loadu_pd(transpose->data + index2);
+                vec1 = _mm256_loadu_pd(index1);
+                vec2 = _mm256_loadu_pd(index2);
                 sum_vec = _mm256_add_pd(sum_vec, _mm256_mul_pd(vec1, vec2));
+                index1 += 4;
+                index2 += 4;
             }
             _mm256_storeu_pd(access, sum_vec);
             sum += access[0] + access[1] + access[2] + access[3];
